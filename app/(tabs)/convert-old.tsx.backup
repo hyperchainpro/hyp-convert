@@ -1,0 +1,710 @@
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Image, Platform, TouchableOpacity } from 'react-native';
+import { Text, Surface, Button, ProgressBar, Chip, Menu, HelperText, Snackbar } from 'react-native-paper';
+import { useLocalSearchParams } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useConversion } from '@/hooks/useConversion';
+import { formatFileSize, getOutputFormats, IMAGE_QUALITY_PRESETS, TOTAL_CONVERSION_PATHS } from '@/constants/formats';
+
+type QualityPreset = keyof typeof IMAGE_QUALITY_PRESETS;
+
+export default function ConvertScreen() {
+    const params = useLocalSearchParams<{ from?: string; to?: string }>();
+    const [quality, setQuality] = useState<QualityPreset>('high');
+    const [formatMenuVisible, setFormatMenuVisible] = useState(false);
+    const [qualityMenuVisible, setQualityMenuVisible] = useState(false);
+    const [snackbarVisible, setSnackbarVisible] = useState(false);
+    const [snackbarMessage, setSnackbarMessage] = useState('');
+
+    const {
+        selectedFile,
+        outputFormat,
+        isConverting,
+        progress,
+        result,
+        error,
+        availableFormats,
+        pickDocument,
+        pickImage,
+        setOutputFormat,
+        convert,
+        downloadResult,
+        reset,
+        clearError,
+    } = useConversion();
+
+    useEffect(() => {
+        if (params.to && availableFormats.includes(params.to)) {
+            setOutputFormat(params.to);
+        }
+    }, [params.to, availableFormats]);
+
+    const handlePickFile = async (type: 'document' | 'image') => {
+        clearError();
+        if (type === 'image') {
+            await pickImage();
+        } else {
+            await pickDocument();
+        }
+    };
+
+    const handleConvert = async () => {
+        const qualityValue = IMAGE_QUALITY_PRESETS[quality];
+        const conversionResult = await convert(qualityValue);
+
+        if (conversionResult.success) {
+            setSnackbarMessage('✅ Konversi berhasil!');
+            setSnackbarVisible(true);
+        }
+    };
+
+    const handleDownload = async () => {
+        const downloadResult2 = await downloadResult();
+        if (downloadResult2.success) {
+            setSnackbarMessage(downloadResult2.message || '📥 File berhasil diunduh!');
+            setSnackbarVisible(true);
+        } else {
+            setSnackbarMessage(downloadResult2.error || 'Gagal mengunduh file');
+            setSnackbarVisible(true);
+        }
+    };
+
+    const isImageFile = selectedFile?.extension &&
+        ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'].includes(selectedFile.extension);
+
+    return (
+        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+            {/* Format Count Badge */}
+            <View style={styles.formatBadge}>
+                <MaterialCommunityIcons name="swap-horizontal" size={14} color="#BF5AF2" />
+                <Text style={styles.formatBadgeText}>{TOTAL_CONVERSION_PATHS}+ Konversi Tersedia</Text>
+            </View>
+
+            {/* Upload Section */}
+            <View style={styles.uploadSection}>
+                <Text variant="titleMedium" style={styles.sectionTitle}>
+                    📁 Pilih File
+                </Text>
+
+                {!selectedFile ? (
+                    <View style={styles.uploadButtons}>
+                        <TouchableOpacity
+                            onPress={() => handlePickFile('image')}
+                            style={styles.uploadButton}
+                            activeOpacity={0.8}
+                        >
+                            <LinearGradient
+                                colors={['rgba(48,209,88,0.15)', 'rgba(52,199,89,0.1)']}
+                                style={styles.uploadButtonGradient}
+                            >
+                                <MaterialCommunityIcons name="image" size={32} color="#30D158" />
+                                <Text style={styles.uploadButtonText}>Pilih Gambar</Text>
+                                <Text style={styles.uploadButtonHint}>JPG, PNG, WebP, dll</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => handlePickFile('document')}
+                            style={styles.uploadButton}
+                            activeOpacity={0.8}
+                        >
+                            <LinearGradient
+                                colors={['rgba(0,122,255,0.15)', 'rgba(88,86,214,0.1)']}
+                                style={styles.uploadButtonGradient}
+                            >
+                                <MaterialCommunityIcons name="file-document" size={32} color="#007AFF" />
+                                <Text style={styles.uploadButtonText}>Pilih Dokumen</Text>
+                                <Text style={styles.uploadButtonHint}>PDF, TXT, DOCX, dll</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={styles.filePreview}>
+                        {isImageFile && (
+                            <View style={styles.imagePreviewContainer}>
+                                <Image
+                                    source={{ uri: selectedFile.uri }}
+                                    style={styles.previewImage}
+                                    resizeMode="contain"
+                                />
+                            </View>
+                        )}
+
+                        {!isImageFile && (
+                            <View style={styles.docPreview}>
+                                <LinearGradient
+                                    colors={['rgba(0,122,255,0.2)', 'rgba(88,86,214,0.2)']}
+                                    style={styles.docPreviewGradient}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="file-document"
+                                        size={48}
+                                        color="#007AFF"
+                                    />
+                                </LinearGradient>
+                            </View>
+                        )}
+
+                        <View style={styles.fileInfo}>
+                            <Text style={styles.fileName} numberOfLines={1}>
+                                {selectedFile.name}
+                            </Text>
+                            <View style={styles.fileMetaRow}>
+                                <View style={styles.chipContainer}>
+                                    <MaterialCommunityIcons name="file" size={14} color="#007AFF" />
+                                    <Text style={styles.chipText}>{selectedFile.extension.toUpperCase()}</Text>
+                                </View>
+                                <View style={styles.chipContainer}>
+                                    <MaterialCommunityIcons name="database" size={14} color="#30D158" />
+                                    <Text style={styles.chipText}>{formatFileSize(selectedFile.size)}</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        <TouchableOpacity onPress={reset} style={styles.changeFileBtn}>
+                            <Text style={styles.changeFileBtnText}>Ganti File</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
+
+            {/* Conversion Options */}
+            {selectedFile && (
+                <View style={styles.optionsSection}>
+                    <Text variant="titleMedium" style={styles.sectionTitle}>
+                        ⚙️ Pengaturan Konversi
+                    </Text>
+
+                    {/* Output Format */}
+                    <View style={styles.optionRow}>
+                        <Text style={styles.optionLabel}>Format Output</Text>
+                        <Menu
+                            visible={formatMenuVisible}
+                            onDismiss={() => setFormatMenuVisible(false)}
+                            anchor={
+                                <TouchableOpacity
+                                    onPress={() => setFormatMenuVisible(true)}
+                                    style={styles.menuButton}
+                                >
+                                    <Text style={styles.menuButtonText}>
+                                        {outputFormat.toUpperCase() || 'Pilih Format'}
+                                    </Text>
+                                    <MaterialCommunityIcons name="chevron-down" size={20} color="#8E8E93" />
+                                </TouchableOpacity>
+                            }
+                            contentStyle={styles.menuContent}
+                        >
+                            {availableFormats.map((format) => (
+                                <Menu.Item
+                                    key={format}
+                                    onPress={() => {
+                                        setOutputFormat(format);
+                                        setFormatMenuVisible(false);
+                                    }}
+                                    title={format.toUpperCase()}
+                                    titleStyle={styles.menuItemText}
+                                />
+                            ))}
+                        </Menu>
+                    </View>
+
+                    {/* Quality Setting */}
+                    {isImageFile && (
+                        <View style={styles.optionRow}>
+                            <Text style={styles.optionLabel}>Kualitas</Text>
+                            <Menu
+                                visible={qualityMenuVisible}
+                                onDismiss={() => setQualityMenuVisible(false)}
+                                anchor={
+                                    <TouchableOpacity
+                                        onPress={() => setQualityMenuVisible(true)}
+                                        style={styles.menuButton}
+                                    >
+                                        <Text style={styles.menuButtonText}>
+                                            {quality === 'low' ? 'Rendah' :
+                                                quality === 'medium' ? 'Sedang' :
+                                                    quality === 'high' ? 'Tinggi' : 'Maksimal'}
+                                        </Text>
+                                        <MaterialCommunityIcons name="chevron-down" size={20} color="#8E8E93" />
+                                    </TouchableOpacity>
+                                }
+                                contentStyle={styles.menuContent}
+                            >
+                                <Menu.Item
+                                    onPress={() => { setQuality('low'); setQualityMenuVisible(false); }}
+                                    title="Rendah (50%)"
+                                    titleStyle={styles.menuItemText}
+                                />
+                                <Menu.Item
+                                    onPress={() => { setQuality('medium'); setQualityMenuVisible(false); }}
+                                    title="Sedang (75%)"
+                                    titleStyle={styles.menuItemText}
+                                />
+                                <Menu.Item
+                                    onPress={() => { setQuality('high'); setQualityMenuVisible(false); }}
+                                    title="Tinggi (90%)"
+                                    titleStyle={styles.menuItemText}
+                                />
+                                <Menu.Item
+                                    onPress={() => { setQuality('maximum'); setQualityMenuVisible(false); }}
+                                    title="Maksimal (100%)"
+                                    titleStyle={styles.menuItemText}
+                                />
+                            </Menu>
+                        </View>
+                    )}
+
+                    {/* Privacy Notice */}
+                    <View style={styles.privacyNotice}>
+                        <MaterialCommunityIcons name="shield-check" size={16} color="#30D158" />
+                        <Text style={styles.privacyText}>
+                            100% Private • Semua konversi dilakukan di perangkat Anda
+                        </Text>
+                    </View>
+                </View>
+            )}
+
+            {/* Error Message */}
+            {error && (
+                <View style={styles.errorContainer}>
+                    <MaterialCommunityIcons name="alert-circle" size={20} color="#FF3B30" />
+                    <Text style={styles.errorText}>{error}</Text>
+                </View>
+            )}
+
+            {/* Convert Button */}
+            {selectedFile && !result?.success && (
+                <TouchableOpacity
+                    onPress={handleConvert}
+                    disabled={isConverting || !outputFormat}
+                    activeOpacity={0.9}
+                    style={[
+                        styles.convertButtonContainer,
+                        (isConverting || !outputFormat) && styles.convertButtonDisabled,
+                    ]}
+                >
+                    <LinearGradient
+                        colors={isConverting || !outputFormat
+                            ? ['#48484A', '#3A3A3C']
+                            : ['#007AFF', '#5856D6']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.convertButton}
+                    >
+                        {isConverting ? (
+                            <Text style={styles.convertButtonText}>Mengonversi...</Text>
+                        ) : (
+                            <>
+                                <MaterialCommunityIcons name="file-swap" size={22} color="#fff" />
+                                <Text style={styles.convertButtonText}>Konversi Sekarang</Text>
+                            </>
+                        )}
+                    </LinearGradient>
+                </TouchableOpacity>
+            )}
+
+            {/* Progress */}
+            {isConverting && (
+                <View style={styles.progressContainer}>
+                    <ProgressBar progress={progress / 100} color="#007AFF" style={styles.progressBar} />
+                    <Text style={styles.progressText}>{Math.round(progress)}%</Text>
+                </View>
+            )}
+
+            {/* Result */}
+            {result?.success && (
+                <View style={styles.resultSection}>
+                    <LinearGradient
+                        colors={['rgba(48,209,88,0.15)', 'rgba(52,199,89,0.1)']}
+                        style={styles.resultGradient}
+                    >
+                        <View style={styles.resultHeader}>
+                            <View style={styles.successIcon}>
+                                <MaterialCommunityIcons name="check" size={32} color="#30D158" />
+                            </View>
+                            <Text variant="titleMedium" style={styles.resultTitle}>
+                                Konversi Berhasil! 🎉
+                            </Text>
+                        </View>
+
+                        <View style={styles.resultActions}>
+                            <TouchableOpacity
+                                onPress={handleDownload}
+                                style={styles.downloadButton}
+                                activeOpacity={0.9}
+                            >
+                                <LinearGradient
+                                    colors={['#30D158', '#34C759']}
+                                    style={styles.downloadButtonGradient}
+                                >
+                                    <MaterialCommunityIcons name="download" size={20} color="#fff" />
+                                    <Text style={styles.downloadButtonText}>Unduh File</Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={reset}
+                                style={styles.newButton}
+                            >
+                                <MaterialCommunityIcons name="plus" size={20} color="#007AFF" />
+                                <Text style={styles.newButtonText}>Konversi Baru</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </LinearGradient>
+                </View>
+            )}
+
+            {/* Snackbar */}
+            <Snackbar
+                visible={snackbarVisible}
+                onDismiss={() => setSnackbarVisible(false)}
+                duration={3000}
+                style={styles.snackbar}
+            >
+                {snackbarMessage}
+            </Snackbar>
+        </ScrollView>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#F2F2F7',
+    },
+    content: {
+        padding: 20,
+        paddingBottom: 40,
+    },
+
+    // Format Badge
+    formatBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        backgroundColor: 'rgba(191,90,242,0.1)',
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: 20,
+        alignSelf: 'center',
+        marginBottom: 20,
+    },
+    formatBadgeText: {
+        color: '#BF5AF2',
+        fontSize: 13,
+        fontWeight: '600',
+    },
+
+    // Upload Section
+    uploadSection: {
+        padding: 20,
+        borderRadius: 20,
+        backgroundColor: '#ffffff',
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    sectionTitle: {
+        color: '#1C1C1E',
+        fontWeight: '700',
+        marginBottom: 16,
+    },
+    uploadButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    uploadButton: {
+        flex: 1,
+        borderRadius: 16,
+        overflow: 'hidden',
+    },
+    uploadButtonGradient: {
+        paddingVertical: 24,
+        alignItems: 'center',
+        borderRadius: 16,
+        borderWidth: 1.5,
+        borderColor: 'rgba(0,0,0,0.05)',
+        borderStyle: 'dashed',
+    },
+    uploadButtonText: {
+        color: '#000000',
+        fontWeight: '600',
+        marginTop: 10,
+    },
+    uploadButtonHint: {
+        color: '#8E8E93',
+        fontSize: 12,
+        marginTop: 4,
+    },
+
+    // File Preview
+    filePreview: {
+        alignItems: 'center',
+    },
+    imagePreviewContainer: {
+        width: '100%',
+        height: 180,
+        borderRadius: 14,
+        overflow: 'hidden',
+        backgroundColor: '#F2F2F7',
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#E5E5EA',
+    },
+    previewImage: {
+        width: '100%',
+        height: '100%',
+    },
+    docPreview: {
+        width: '100%',
+        height: 100,
+        marginBottom: 16,
+    },
+    docPreviewGradient: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 14,
+    },
+    fileInfo: {
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    fileName: {
+        color: '#1C1C1E',
+        fontWeight: '600',
+        fontSize: 16,
+        marginBottom: 10,
+    },
+    fileMetaRow: {
+        flexDirection: 'row',
+        gap: 10,
+    },
+    chipContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#F2F2F7',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+    },
+    chipText: {
+        color: '#8E8E93',
+        fontSize: 13,
+    },
+    changeFileBtn: {
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+    },
+    changeFileBtnText: {
+        color: '#007AFF',
+        fontWeight: '500',
+    },
+
+    // Options Section
+    optionsSection: {
+        padding: 20,
+        borderRadius: 20,
+        backgroundColor: '#ffffff',
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    optionRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    optionLabel: {
+        color: '#1C1C1E',
+        fontSize: 15,
+    },
+    menuButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#F2F2F7',
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        borderRadius: 10,
+    },
+    menuButtonText: {
+        color: '#000000',
+        fontWeight: '500',
+    },
+    menuContent: {
+        backgroundColor: '#ffffff',
+        borderRadius: 12,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+    },
+    menuItemText: {
+        color: '#000000',
+    },
+    privacyNotice: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        padding: 14,
+        backgroundColor: 'rgba(48,209,88,0.1)',
+        borderRadius: 12,
+    },
+    privacyText: {
+        color: '#30D158',
+        fontSize: 13,
+        flex: 1,
+    },
+
+    // Error
+    errorContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: 'rgba(255,59,48,0.1)',
+        padding: 14,
+        borderRadius: 12,
+        marginBottom: 16,
+    },
+    errorText: {
+        color: '#FF3B30',
+        fontSize: 14,
+        flex: 1,
+    },
+
+    // Convert Button
+    convertButtonContainer: {
+        borderRadius: 16,
+        overflow: 'hidden',
+        marginBottom: 16,
+        shadowColor: '#007AFF',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 8,
+    },
+    convertButtonDisabled: {
+        shadowOpacity: 0,
+        elevation: 0,
+    },
+    convertButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        paddingVertical: 18,
+    },
+    convertButtonText: {
+        color: '#ffffff',
+        fontWeight: '700',
+        fontSize: 17,
+    },
+
+    // Progress
+    progressContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 16,
+    },
+    progressBar: {
+        flex: 1,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#E5E5EA',
+    },
+    progressText: {
+        color: '#007AFF',
+        fontWeight: '600',
+        width: 44,
+        textAlign: 'right',
+    },
+
+    // Result
+    resultSection: {
+        borderRadius: 20,
+        overflow: 'hidden',
+        backgroundColor: '#ffffff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    resultGradient: {
+        padding: 24,
+        alignItems: 'center',
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(48,209,88,0.3)',
+    },
+    resultHeader: {
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    successIcon: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: 'rgba(48,209,88,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    resultTitle: {
+        color: '#1C1C1E',
+        fontWeight: '700',
+    },
+    resultActions: {
+        flexDirection: 'row',
+        gap: 12,
+        width: '100%',
+    },
+    downloadButton: {
+        flex: 1,
+        borderRadius: 14,
+        overflow: 'hidden',
+    },
+    downloadButtonGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 14,
+    },
+    downloadButtonText: {
+        color: '#ffffff',
+        fontWeight: '600',
+    },
+    newButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 14,
+        borderRadius: 14,
+        borderWidth: 1.5,
+        borderColor: '#007AFF',
+    },
+    newButtonText: {
+        color: '#007AFF',
+        fontWeight: '600',
+    },
+
+    // Snackbar
+    snackbar: {
+        backgroundColor: '#333333',
+        borderRadius: 14,
+        marginBottom: 16,
+    },
+});
