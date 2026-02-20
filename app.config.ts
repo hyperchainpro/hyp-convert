@@ -1,16 +1,15 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
-export default ({ config }: ConfigContext): ExpoConfig => ({
-    ...config,
+export default (): ExpoConfig => ({
     name: "HYP Convert",
     slug: "hyp-convert",
     version: "1.0.0",
     orientation: "default",
-    icon: "./assets/images/icon.svg",
+    icon: "./assets/images/icon.png",
     scheme: "hypconvert",
     userInterfaceStyle: "automatic",
     splash: {
-        image: "./assets/images/splash-icon.svg",
+        image: "./assets/images/hyp-logo.png",
         resizeMode: "contain",
         backgroundColor: "#0f0f23"
     },
@@ -20,7 +19,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     android: {
         adaptiveIcon: {
-            foregroundImage: "./assets/images/adaptive-icon.svg",
+            foregroundImage: "./assets/images/adaptive-icon.png",
             backgroundColor: "#0f0f23"
         },
         package: "com.hypconvert.app",
