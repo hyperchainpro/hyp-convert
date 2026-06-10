@@ -3,7 +3,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 // Supabase configuration
-// Supabase configuration
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
@@ -15,14 +14,16 @@ const TOKEN_CONFIG = {
 };
 
 // Create Supabase client with proper auth storage
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+// Only initialize in browser environment, stub in Node.js (for static rendering)
+const isServer = typeof window === 'undefined' && typeof navigator === 'undefined';
+
+export const supabase = isServer ? null : createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
         storage: Platform.OS === 'web' ? undefined : AsyncStorage,
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: Platform.OS === 'web', // Only on web
-        // Disable locking mechanism to prevent 'signal is aborted without reason' errors
-        // often caused by navigator.locks timeouts in local development
+        // Disable locking mechanism to prevent errors during static rendering
         lock: false as any,
     },
 });
