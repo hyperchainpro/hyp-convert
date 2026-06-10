@@ -18,9 +18,9 @@ const TOKEN_CONFIG = {
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
         storage: Platform.OS === 'web' ? undefined : AsyncStorage,
-        autoRefreshToken: false, // Temporarily disabled to debug hang
-        persistSession: false,   // Temporarily disabled to debug hang
-        detectSessionInUrl: false,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: Platform.OS === 'web', // Only on web
         // Disable locking mechanism to prevent 'signal is aborted without reason' errors
         // often caused by navigator.locks timeouts in local development
         lock: false as any,
