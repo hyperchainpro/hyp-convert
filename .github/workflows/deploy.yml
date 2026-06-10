@@ -30,8 +30,8 @@ jobs:
       - name: Build Expo web app
         run: npm run build:web:prod
 
-      - name: Deploy to Cloudflare Pages with Wrangler
-        run: wrangler pages deploy dist --project-name=hyp-convert
+      - name: Deploy to Cloudflare Pages
+        run: npm run deploy:cloudflare
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 

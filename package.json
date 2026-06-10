@@ -85,7 +85,8 @@
     "@types/turndown": "^5.0.6",
     "babel-plugin-module-resolver": "^5.0.2",
     "sharp-cli": "^5.2.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "wrangler": "^4.99.0"
   },
   "private": true
 }
