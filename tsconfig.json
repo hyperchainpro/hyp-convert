@@ -23,9 +23,8 @@
     "noEmit": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "types": [
-      "node"
-    ]
+    "types": [],
+    "noImplicitAny": false
   },
   "include": [
     "**/*.ts",
