@@ -9,9 +9,7 @@
     "web": "expo start --web --port 3000",
     "build:web": "expo export --platform web --output-dir=dist",
     "build:web:prod": "expo export --platform web --output-dir=dist",
-    "build": "npm run build:web:prod",
-    "deploy:cloudflare": "wrangler pages deploy dist --project-name=hyp-convert",
-    "deploy:preview": "wrangler pages deploy dist --branch=preview"
+    "build": "npm run build:web:prod"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -85,8 +83,7 @@
     "@types/turndown": "^5.0.6",
     "babel-plugin-module-resolver": "^5.0.2",
     "sharp-cli": "^5.2.0",
-    "typescript": "^5.4.0",
-    "wrangler": "^3.99.0"
+    "typescript": "^5.4.0"
   },
   "private": true
 }
