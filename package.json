@@ -10,7 +10,7 @@
     "build:web": "expo export --platform web --output-dir=dist",
     "build:web:prod": "expo export --platform web --output-dir=dist",
     "build": "npm run build:web:prod",
-    "deploy:cloudflare": "wrangler pages deploy dist --account-id=$CLOUDFLARE_ACCOUNT_ID",
+    "deploy:cloudflare": "wrangler pages deploy dist --project-name=hyp-convert",
     "deploy:preview": "wrangler pages deploy dist --branch=preview"
   },
   "dependencies": {
