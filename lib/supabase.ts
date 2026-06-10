@@ -1,32 +1,96 @@
-import { createClient } from '@supabase/supabase-js';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+// =====================================================
+// SUPABASE CLIENT - RUNTIME ONLY
+// =====================================================
 
-// Supabase configuration
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+// This module is only safe to use in browser/native environments
+// During static rendering/SSR in Node.js, all functions will be stubs
 
-// Token configuration
-const TOKEN_CONFIG = {
+let supabaseInstance: any = null;
+const isRuntimeEnv = () => {
+    // Check if we're in a browser-like environment
+    return typeof window !== 'undefined' || typeof navigator !== 'undefined';
+};
+
+const initSupabase = () => {
+    if (!isRuntimeEnv()) return null;
+    if (supabaseInstance) return supabaseInstance;
+
+    try {
+        const { createClient } = require('@supabase/supabase-js');
+        const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+        const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+            console.warn('Missing Supabase credentials');
+            return null;
+        }
+
+        try {
+            const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+            const { Platform } = require('react-native');
+
+            supabaseInstance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                auth: {
+                    storage: Platform.OS === 'web' ? undefined : AsyncStorage,
+                    autoRefreshToken: true,
+                    persistSession: true,
+                    detectSessionInUrl: Platform.OS === 'web',
+                    lock: false as any,
+                },
+            });
+        } catch (e) {
+            // If react-native is not available, try basic config
+            supabaseInstance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                auth: {
+                    autoRefreshToken: true,
+                    persistSession: true,
+                    lock: false as any,
+                },
+            });
+        }
+    } catch (error) {
+        console.error('Failed to initialize Supabase:', error);
+        return null;
+    }
+    
+    return supabaseInstance;
+};
+
+// Stub object for non-runtime environments
+const stubSupabase = {
+    auth: {
+        getSession: async () => ({ data: { session: null }, error: null }),
+        getUser: async () => ({ data: { user: null }, error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+        signUp: async () => ({ data: { user: null }, error: new Error('Not available during SSR') }),
+        signInWithPassword: async () => ({ data: { user: null }, error: new Error('Not available during SSR') }),
+        signOut: async () => ({ error: null }),
+    },
+    from: () => ({
+        select: () => ({
+            eq: () => ({ single: async () => ({ data: null, error: null }) }),
+        }),
+        insert: async () => ({ data: null, error: null }),
+        update: async () => ({ data: null, error: null }),
+        delete: async () => ({ data: null, error: null }),
+    }),
+};
+
+export const getSupabase = () => {
+    return supabaseInstance || (isRuntimeEnv() ? initSupabase() : stubSupabase);
+};
+
+export const supabase = getSupabase();
+
+// =====================================================
+// TOKEN CONFIGURATION
+// =====================================================
+
+export const TOKEN_CONFIG = {
     SIGNUP_BONUS: 100,
     REFERRER_BONUS: 50,
     REFERRED_BONUS: 25,
 };
-
-// Create Supabase client with proper auth storage
-// Only initialize in browser environment, stub in Node.js (for static rendering)
-const isServer = typeof window === 'undefined' && typeof navigator === 'undefined';
-
-export const supabase = isServer ? null : createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-        storage: Platform.OS === 'web' ? undefined : AsyncStorage,
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: Platform.OS === 'web', // Only on web
-        // Disable locking mechanism to prevent errors during static rendering
-        lock: false as any,
-    },
-});
 
 // =====================================================
 // HELPER FUNCTIONS
