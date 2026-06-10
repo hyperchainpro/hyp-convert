@@ -30,12 +30,6 @@ jobs:
       - name: Build Expo web app
         run: npm run build:web:prod
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: dist
-          path: dist/
-
       - name: Deploy to Cloudflare Pages with Wrangler
         run: wrangler pages deploy dist --project-name=hyp-convert
         env:
