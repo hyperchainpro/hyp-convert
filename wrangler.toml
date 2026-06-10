@@ -1,8 +1,4 @@
 name = "hyp-convert"
-account_id = "57a43ffcdd96968a982985d41a26860e"
-workers_dev = true
-compatibility_date = "2024-01-10"
-compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "dist"
 
 # D1 Database binding
@@ -10,15 +6,3 @@ pages_build_output_dir = "dist"
 binding = "hyp_convert_db"
 database_name = "hyp-convert-db"
 database_id = "cac71aa5-8a30-4a22-adaf-5db1da6b4400"
-
-# Build configuration for Cloudflare Pages
-[build]
-command = "npm install --legacy-peer-deps && npm run build:web:prod"
-cwd = "./"
-
-# Environment variables
-[env.production]
-d1_databases = [{binding = "hyp_convert_db", database_id = "cac71aa5-8a30-4a22-adaf-5db1da6b4400"}]
-
-[env.development]
-d1_databases = [{binding = "hyp_convert_db", database_id = "cac71aa5-8a30-4a22-adaf-5db1da6b4400"}]
