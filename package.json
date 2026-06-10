@@ -86,7 +86,7 @@
     "babel-plugin-module-resolver": "^5.0.2",
     "sharp-cli": "^5.2.0",
     "typescript": "^5.4.0",
-    "wrangler": "^4.99.0"
+    "wrangler": "^3.99.0"
   },
   "private": true
 }
