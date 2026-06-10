@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm install --legacy-peer-deps && npm run build:web:prod",
+  "buildCommand": "npm ci --legacy-peer-deps && npm run build:web:prod",
   "outputDirectory": "dist",
   "framework": "vite",
   "env": {
