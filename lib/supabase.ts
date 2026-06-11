@@ -7,8 +7,14 @@
 
 let supabaseInstance: any = null;
 const isRuntimeEnv = () => {
-    // Check if we're in a browser-like environment
-    return typeof window !== 'undefined' || typeof navigator !== 'undefined';
+    // During Node.js static pre-rendering, process.versions.node is defined.
+    // We check globalThis.process to bypass Metro's local `process` shim.
+    const isNode = typeof globalThis !== 'undefined' && (globalThis as any).process?.versions?.node;
+    if (isNode) {
+        return false;
+    }
+    // Check if we're in a browser-like or native runtime environment
+    return typeof window !== 'undefined';
 };
 
 const initSupabase = () => {
@@ -35,7 +41,6 @@ const initSupabase = () => {
                     autoRefreshToken: true,
                     persistSession: true,
                     detectSessionInUrl: Platform.OS === 'web',
-                    lock: false as any,
                 },
             });
         } catch (e) {
@@ -44,7 +49,6 @@ const initSupabase = () => {
                 auth: {
                     autoRefreshToken: true,
                     persistSession: true,
-                    lock: false as any,
                 },
             });
         }
@@ -81,6 +85,7 @@ export const getSupabase = () => {
 };
 
 export const supabase = getSupabase();
+
 
 // =====================================================
 // TOKEN CONFIGURATION

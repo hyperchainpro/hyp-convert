@@ -21,7 +21,7 @@ import { UniversalAd } from '@/components/ads/UniversalAd';
 function RootLayoutNav() {
     const { isAuthenticated, loading, user } = useAuth();
     const security = useSecurity(); // Initialize security listener
-    const segments = useSegments();
+    const segments = useSegments() as string[];
 
     useEffect(() => {
         if (loading) return;

@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { ColorMode, ManualAdjustments, DEFAULT_ADJUSTMENTS } from '@/lib/imageFilters';
 

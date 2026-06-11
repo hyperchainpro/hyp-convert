@@ -133,8 +133,17 @@ export const useAuth = () => {
 
             return { success: true };
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Gagal masuk';
-            console.error('[useAuth] SignIn Exception:', message);
+            const rawMessage = error instanceof Error ? error.message : 'Gagal masuk';
+            // Translate common Supabase error messages to Indonesian
+            let message = rawMessage;
+            if (rawMessage.toLowerCase().includes('email not confirmed')) {
+                message = 'EMAIL_NOT_CONFIRMED';
+            } else if (rawMessage.toLowerCase().includes('invalid login credentials')) {
+                message = 'INVALID_CREDENTIALS';
+            } else if (rawMessage.toLowerCase().includes('timed out')) {
+                message = 'Koneksi timeout. Periksa jaringan Anda dan coba lagi.';
+            }
+            console.error('[useAuth] SignIn Exception:', rawMessage);
             setState(prev => ({ ...prev, loading: false, error: message }));
             return { success: false, error: message };
         }
@@ -169,11 +178,17 @@ export const useAuth = () => {
             // Execute actual signup
             const signUpPromise = async () => {
                 console.log('[useAuth] Invoking supabase.auth.signUp...');
+                // Determine redirect URL for email confirmation
+                const redirectTo = typeof window !== 'undefined'
+                    ? `${window.location.origin}/auth/confirm`
+                    : 'https://hyp-convert-psi.vercel.app/auth/confirm';
+
                 const { data, error } = await supabase.auth.signUp({
                     email,
                     password,
                     options: {
                         data: { username },
+                        emailRedirectTo: redirectTo,
                     },
                 });
 

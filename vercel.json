@@ -2,6 +2,7 @@
   "buildCommand": "npm ci --legacy-peer-deps && npm run build:web:prod",
   "outputDirectory": "dist",
   "framework": "vite",
+  "cleanUrls": true,
   "env": {
     "NODE_ENV": "production"
   }

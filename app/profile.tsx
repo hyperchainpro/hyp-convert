@@ -354,7 +354,7 @@ export default function ProfileScreen() {
                                     style={[styles.socialButton, { backgroundColor: '#5865F2' }]}
                                     onPress={shareToDiscord}
                                 >
-                                    <MaterialCommunityIcons name="discord" size={24} color="#fff" />
+                                    <MaterialCommunityIcons name={"discord" as any} size={24} color="#fff" />
                                     <Text style={styles.socialButtonText}>Discord</Text>
                                 </TouchableOpacity>
                             </View>

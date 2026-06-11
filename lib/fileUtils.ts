@@ -3,7 +3,7 @@
  * Provides file operations that work on both web and native platforms
  */
 
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 
 /**

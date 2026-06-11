@@ -9,7 +9,7 @@
  * All libraries are loaded with try/catch to prevent crashes if unavailable
  */
 
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { Buffer } from 'buffer';
 
