@@ -1,11 +1,21 @@
 {
-  "buildCommand": "npm run build:web:prod",
-  "outputDirectory": "dist",
-  "cleanUrls": true,
-  "rewrites": [
+  "version": 2,
+  "public": false,
+  "builds": [
     {
-      "source": "/:path*",
-      "destination": "/index.html"
+      "src": "dist/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(?!.*\\..*$)",
+      "dest": "/index.html",
+      "methods": ["GET", "HEAD"]
+    },
+    {
+      "src": "/(.*)",
+      "dest": "$1"
     }
   ]
 }
