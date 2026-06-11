@@ -1,4 +1,5 @@
 {
+  "buildCommand": "npm run build:web:prod",
   "outputDirectory": "dist",
   "cleanUrls": true,
   "rewrites": [
@@ -6,8 +7,5 @@
       "source": "/:path*",
       "destination": "/index.html"
     }
-  ],
-  "env": {
-    "SKIP_ENV_VALIDATION": "true"
-  }
+  ]
 }
