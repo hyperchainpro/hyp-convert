@@ -1,11 +1,13 @@
 {
-  "public": "dist",
+  "outputDirectory": "dist",
   "cleanUrls": true,
-  "trailingSlash": false,
   "rewrites": [
     {
       "source": "/:path*",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "env": {
+    "SKIP_ENV_VALIDATION": "true"
+  }
 }
