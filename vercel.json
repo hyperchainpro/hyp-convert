@@ -1,21 +1,16 @@
 {
   "buildCommand": "npm ci --legacy-peer-deps && npm run build:web:prod",
   "outputDirectory": "dist",
-  "framework": "vite",
+  "framework": "other",
   "cleanUrls": true,
   "regions": ["sin1"],
-  "functions": {
-    "api/**/*.ts": {
-      "maxDuration": 60
-    }
-  },
   "headers": [
     {
-      "source": "/.*",
+      "source": "/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=3600"
+          "value": "public, max-age=3600, s-maxage=3600"
         },
         {
           "key": "X-Content-Type-Options",
@@ -24,14 +19,18 @@
         {
           "key": "X-Frame-Options",
           "value": "SAMEORIGIN"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
         }
       ]
     }
   ],
-  "redirects": [
+  "rewrites": [
     {
-      "source": "/app",
-      "destination": "/"
+      "source": "/(.+)",
+      "destination": "/index.html"
     }
   ],
   "env": {
