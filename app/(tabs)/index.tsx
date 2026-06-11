@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Image } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Image, Animated, Dimensions } from 'react-native';
 import { Text, IconButton, Avatar } from 'react-native-paper';
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -19,8 +19,41 @@ interface ConversionHistoryItem {
     converted_at: string;
 }
 
-// Use first 8 bidirectional conversions for quick actions
-const QUICK_ACTIONS = BIDIRECTIONAL_CONVERSIONS.slice(0, 8);
+// Action card data structure for 2x2 grid
+const ACTION_CARDS = [
+    {
+        id: 'scan',
+        title: 'Scan',
+        icon: 'camera' as const,
+        gradient: ['#FFE5B4', '#FFD699'] as const,
+        iconColor: '#FFA500',
+        route: '/(tabs)/scanner' as const,
+    },
+    {
+        id: 'edit',
+        title: 'Edit',
+        icon: 'pencil' as const,
+        gradient: ['#B4E5FF', '#99D6FF'] as const,
+        iconColor: '#0099FF',
+        route: '/(tabs)/documents' as const,
+    },
+    {
+        id: 'convert',
+        title: 'Convert',
+        icon: 'file-swap' as const,
+        gradient: ['#B4D6FF', '#99CCFF'] as const,
+        iconColor: '#0052CC',
+        route: '/(tabs)/convert' as const,
+    },
+    {
+        id: 'ask-ai',
+        title: 'Ask AI',
+        icon: 'brain' as const,
+        gradient: ['#FFD4E5', '#FFC0D9'] as const,
+        iconColor: '#FF6B9D',
+        route: '/(tabs)/convert' as const,
+    },
+] as const;
 
 export default function DashboardScreen() {
     const { user, signOut } = useAuth();
@@ -30,6 +63,22 @@ export default function DashboardScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [securityModalVisible, setSecurityModalVisible] = useState(false);
     const [tokenBalance, setTokenBalance] = useState(0);
+
+    // Animation refs for action cards
+    const cardAnimations = useRef([
+        new Animated.Value(0),
+        new Animated.Value(0),
+        new Animated.Value(0),
+        new Animated.Value(0),
+    ]).current;
+
+    // Scale animation for button press
+    const [scaleAnims] = useState([
+        new Animated.Value(1),
+        new Animated.Value(1),
+        new Animated.Value(1),
+        new Animated.Value(1),
+    ]);
 
     const loadData = async () => {
         try {
@@ -50,17 +99,47 @@ export default function DashboardScreen() {
         loadData();
     }, []);
 
+    // Staggered animation for cards on mount
+    useEffect(() => {
+        const animations = cardAnimations.map((anim, index) =>
+            Animated.sequence([
+                Animated.delay(index * 100),
+                Animated.spring(anim, {
+                    toValue: 1,
+                    tension: 50,
+                    friction: 7,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+        Animated.parallel(animations).start();
+    }, []);
+
     const onRefresh = async () => {
         setRefreshing(true);
         await loadData();
         setRefreshing(false);
     };
 
-    const handleQuickAction = (from: string, to: string) => {
-        router.push({
-            pathname: '/(tabs)/convert',
-            params: { from: from.toLowerCase(), to: to.toLowerCase() },
-        });
+    const handleActionCardPress = (index: number, route: string) => {
+        // Scale animation
+        Animated.sequence([
+            Animated.timing(scaleAnims[index], {
+                toValue: 0.95,
+                duration: 100,
+                useNativeDriver: true,
+            }),
+            Animated.timing(scaleAnims[index], {
+                toValue: 1,
+                duration: 100,
+                useNativeDriver: true,
+            }),
+        ]).start();
+
+        // Navigate after a short delay
+        setTimeout(() => {
+            router.push(route);
+        }, 150);
     };
 
     const handleLogout = async () => {
@@ -91,162 +170,139 @@ export default function DashboardScreen() {
                 onClose={() => setSecurityModalVisible(false)}
             />
 
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.headerLeft}
-                    onPress={() => router.push('/profile')}
-                    activeOpacity={0.7}
-                >
-                    <LinearGradient
-                        colors={['#007AFF', '#5856D6']}
-                        style={styles.avatarGradient}
-                    >
-                        <MaterialCommunityIcons name="account" size={24} color="#fff" />
-                    </LinearGradient>
-                    <View>
-                        <Text variant="titleMedium" style={styles.greeting}>
-                            Selamat datang! 👋
-                        </Text>
-                        <Text variant="bodySmall" style={styles.email}>
-                            {user?.email || 'Pengguna'}
-                        </Text>
+            {/* Header with Logo and Greeting */}
+            <View style={styles.headerTop}>
+                <View style={styles.headerTitleSection}>
+                    <View style={styles.logoAndTitle}>
+                        <MaterialCommunityIcons name="folder-open" size={24} color="#007AFF" />
+                        <Text style={styles.appName}>HYP Convert</Text>
                     </View>
-                </TouchableOpacity>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TouchableOpacity
-                        style={[styles.logoutBtn, { backgroundColor: 'rgba(0,122,255,0.15)' }]}
-                        onPress={() => setSecurityModalVisible(true)}
-                    >
-                        <MaterialCommunityIcons name="cog" size={20} color="#007AFF" />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-                        <MaterialCommunityIcons name="logout" size={20} color="#FF3B30" />
-                    </TouchableOpacity>
                 </View>
+                <TouchableOpacity
+                    style={styles.settingsBtn}
+                    onPress={() => setSecurityModalVisible(true)}
+                >
+                    <MaterialCommunityIcons name="cog" size={20} color="#8E8E93" />
+                </TouchableOpacity>
             </View>
 
-            {/* Stats Cards with Glassmorphism */}
-            <View style={styles.statsContainer}>
-                <LinearGradient
-                    colors={['#FFFFFF', '#F2F2F7']}
-                    style={styles.statCard}
-                >
-                    <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255, 215, 0, 0.1)' }]}>
-                        <Image source={require('@/assets/images/hyp-token-icon.png')} style={{ width: 28, height: 28 }} resizeMode="contain" />
-                    </View>
-                    <Text variant="headlineMedium" style={styles.statNumber}>{tokenBalance}</Text>
-                    <Text variant="bodySmall" style={styles.statLabel}>HYP Tokens</Text>
-                </LinearGradient>
+            {/* Greeting */}
+            <Text style={styles.greeting}>Hi {user?.email?.split('@')[0] || 'User'}</Text>
 
-                <LinearGradient
-                    colors={['#FFFFFF', '#F2F2F7']}
-                    style={styles.statCard}
-                >
-                    <View style={styles.statIconContainer}>
-                        <MaterialCommunityIcons name="file-document-multiple" size={28} color="#007AFF" />
-                    </View>
-                    <Text variant="headlineMedium" style={styles.statNumber}>{stats.total}</Text>
-                    <Text variant="bodySmall" style={styles.statLabel}>Total Konversi</Text>
-                </LinearGradient>
+            {/* Action Cards Grid - 2x2 */}
+            <View style={styles.actionGrid}>
+                {ACTION_CARDS.map((card, index) => {
+                    const row = Math.floor(index / 2);
+                    const col = index % 2;
+
+                    return (
+                        <Animated.View
+                            key={card.id}
+                            style={[
+                                styles.actionCardWrapper,
+                                col === 0 && { marginRight: 8 },
+                                {
+                                    opacity: cardAnimations[index],
+                                    transform: [
+                                        {
+                                            translateY: cardAnimations[index].interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: [20, 0],
+                                            }),
+                                        },
+                                        {
+                                            scale: scaleAnims[index],
+                                        },
+                                    ],
+                                },
+                            ]}
+                        >
+                            <TouchableOpacity
+                                onPress={() => handleActionCardPress(index, card.route)}
+                                activeOpacity={0.8}
+                                style={styles.actionCard}
+                            >
+                                <LinearGradient
+                                    colors={card.gradient}
+                                    style={styles.actionCardGradient}
+                                >
+                                    <View style={styles.actionCardContent}>
+                                        <MaterialCommunityIcons
+                                            name={card.icon as any}
+                                            size={40}
+                                            color={card.iconColor}
+                                        />
+                                        <Text style={styles.actionCardTitle}>{card.title}</Text>
+                                    </View>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </Animated.View>
+                    );
+                })}
             </View>
 
             {/* Native Ad Banner */}
             <UniversalAd type="native" />
 
-            {/* Quick Actions - Bidirectional */}
+            {/* Recent Activity Section */}
             <View style={styles.section}>
-                <Text variant="titleMedium" style={styles.sectionTitle}>
-                    ⚡ Konversi Cepat
-                </Text>
-                <Text style={styles.sectionSubtitle}>
-                    Konversi dua arah • TXT ↔ PDF • JSON ↔ CSV
-                </Text>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.quickActionsScroll}
-                >
-                    {QUICK_ACTIONS.map((action: any, index: number) => (
-                        <TouchableOpacity
-                            key={index}
-                            onPress={() => handleQuickAction(action.from, action.to)}
-                            activeOpacity={0.8}
-                            style={styles.quickActionCard}
-                        >
-                            <View style={[styles.quickActionIcon, { backgroundColor: action.color + '20' }]}>
-                                <MaterialCommunityIcons
-                                    name={action.icon as any}
-                                    size={22}
-                                    color={action.color}
-                                />
-                            </View>
-                            <Text style={styles.quickActionText}>
-                                {action.from}
-                            </Text>
-                            <MaterialCommunityIcons name="arrow-right" size={14} color="#8E8E93" />
-                            <Text style={styles.quickActionText}>
-                                {action.to}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
-            </View>
+                <Text style={styles.sectionTitle}>Recent Activity</Text>
 
-            {/* Main Convert Button */}
-            <TouchableOpacity
-                onPress={() => router.push('/(tabs)/convert')}
-                activeOpacity={0.9}
-                style={styles.convertButtonContainer}
-            >
-                <LinearGradient
-                    colors={['#007AFF', '#5856D6']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.convertButton}
-                >
-                    <MaterialCommunityIcons name="file-swap" size={24} color="#fff" />
-                    <Text style={styles.convertButtonText}>Mulai Konversi</Text>
-                    <View style={styles.convertButtonBadge}>
-                        <Text style={styles.convertButtonBadgeText}>80+ Format</Text>
-                    </View>
-                </LinearGradient>
-            </TouchableOpacity>
+                <View style={styles.recentActivityContainer}>
+                    {/* Left Activity */}
+                    <TouchableOpacity style={styles.activityItem}>
+                        <View style={[styles.activityIcon, { backgroundColor: 'rgba(200, 150, 100, 0.2)' }]}>
+                            <MaterialCommunityIcons name="file-pdf-box" size={24} color="#E67E22" />
+                        </View>
+                        <View style={styles.activityInfo}>
+                            <Text style={styles.activityTitle}>PDF to Word</Text>
+                            <Text style={styles.activityTime}>1 hours ago</Text>
+                        </View>
+                    </TouchableOpacity>
 
-            {/* Features Highlight */}
-            <View style={styles.featuresContainer}>
-                <View style={styles.featureItem}>
-                    <View style={[styles.featureIcon, { backgroundColor: 'rgba(48,209,88,0.15)' }]}>
-                        <MaterialCommunityIcons name="shield-check" size={18} color="#30D158" />
-                    </View>
-                    <Text style={styles.featureText}>100% Private</Text>
-                </View>
-                <View style={styles.featureItem}>
-                    <View style={[styles.featureIcon, { backgroundColor: 'rgba(255,159,10,0.15)' }]}>
-                        <MaterialCommunityIcons name="lightning-bolt" size={18} color="#FF9F0A" />
-                    </View>
-                    <Text style={styles.featureText}>Fast Convert</Text>
-                </View>
-                <View style={[styles.featureItem, { borderRightWidth: 0 }]}>
-                    <View style={[styles.featureIcon, { backgroundColor: 'rgba(191,90,242,0.15)' }]}>
-                        <MaterialCommunityIcons name="swap-horizontal" size={18} color="#BF5AF2" />
-                    </View>
-                    <Text style={styles.featureText}>Bidirectional</Text>
+                    {/* Right Activity */}
+                    <TouchableOpacity style={styles.activityItem}>
+                        <View style={[styles.activityIcon, { backgroundColor: 'rgba(100, 150, 200, 0.2)' }]}>
+                            <MaterialCommunityIcons name="image-search" size={24} color="#3498DB" />
+                        </View>
+                        <View style={styles.activityInfo}>
+                            <Text style={styles.activityTitle}>Image Scan</Text>
+                            <Text style={styles.activityTime}>1 hours ago</Text>
+                        </View>
+                    </TouchableOpacity>
                 </View>
             </View>
 
-            {/* Recent Documents (Scanned) */}
+            {/* Navigation Tabs Hint */}
+            <View style={styles.section}>
+                <View style={styles.navigationHint}>
+                    <View style={styles.navTab}>
+                        <View style={[styles.navIcon, { backgroundColor: 'rgba(0, 122, 255, 0.2)' }]}>
+                            <MaterialCommunityIcons name="view-dashboard" size={20} color="#007AFF" />
+                        </View>
+                        <Text style={styles.navLabel}>Dashboard</Text>
+                    </View>
+                    <View style={styles.navTab}>
+                        <MaterialCommunityIcons name="folder" size={20} color="#8E8E93" />
+                        <Text style={styles.navLabel}>Files</Text>
+                    </View>
+                    <View style={styles.navTab}>
+                        <MaterialCommunityIcons name="history" size={20} color="#8E8E93" />
+                        <Text style={styles.navLabel}>History</Text>
+                    </View>
+                    <View style={styles.navTab}>
+                        <MaterialCommunityIcons name="account" size={20} color="#8E8E93" />
+                        <Text style={styles.navLabel}>Profile</Text>
+                    </View>
+                </View>
+            </View>
+
+            {/* Recent Documents */}
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                    <Text variant="titleMedium" style={styles.sectionTitle}>
-                        📄 Dokumen Terbaru
-                    </Text>
-                    <TouchableOpacity
-                        onPress={() => router.push('/(tabs)/documents' as any)}
-                        style={styles.seeAllBtn}
-                    >
-                        <Text style={styles.seeAllText}>Lihat Semua</Text>
-                        <MaterialCommunityIcons name="chevron-right" size={16} color="#007AFF" />
+                    <Text style={styles.sectionTitle}>Recent Documents</Text>
+                    <TouchableOpacity onPress={() => router.push('/(tabs)/documents' as any)}>
+                        <Text style={styles.seeAllLink}>See All</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -291,18 +347,12 @@ export default function DashboardScreen() {
                 )}
             </View>
 
-            {/* Recent History (Conversions) */}
+            {/* Recent History */}
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                    <Text variant="titleMedium" style={styles.sectionTitle}>
-                        📊 Riwayat Konversi
-                    </Text>
-                    <TouchableOpacity
-                        onPress={() => router.push('/(tabs)/history')}
-                        style={styles.seeAllBtn}
-                    >
-                        <Text style={styles.seeAllText}>Lihat Semua</Text>
-                        <MaterialCommunityIcons name="chevron-right" size={16} color="#007AFF" />
+                    <Text style={styles.sectionTitle}>Recent Conversions</Text>
+                    <TouchableOpacity onPress={() => router.push('/(tabs)/history')}>
+                        <Text style={styles.seeAllLink}>See All</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -312,7 +362,7 @@ export default function DashboardScreen() {
                         <Text style={styles.emptyText}>Belum ada riwayat konversi</Text>
                     </View>
                 ) : (
-                    history.map((item, index) => (
+                    history.map((item) => (
                         <View key={item.id} style={styles.historyItem}>
                             <View style={styles.historyIcon}>
                                 <MaterialCommunityIcons name="file-sync" size={20} color="#007AFF" />
@@ -330,15 +380,189 @@ export default function DashboardScreen() {
                     ))
                 )}
             </View>
-        </ScrollView >
+        </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F2F2F7', // Light Background
+        backgroundColor: '#F2F2F7',
     },
+    content: {
+        padding: 20,
+        paddingBottom: 40,
+    },
+
+    // Header
+    headerTop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    headerTitleSection: {
+        flex: 1,
+    },
+    logoAndTitle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    appName: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#000000',
+    },
+    settingsBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+
+    greeting: {
+        fontSize: 28,
+        fontWeight: '700',
+        color: '#000000',
+        marginBottom: 20,
+    },
+
+    // Action Grid
+    actionGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginBottom: 24,
+        gap: 16,
+    },
+    actionCardWrapper: {
+        width: '48%',
+    },
+    actionCard: {
+        overflow: 'hidden',
+        borderRadius: 20,
+    },
+    actionCardGradient: {
+        paddingVertical: 32,
+        paddingHorizontal: 20,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    actionCardContent: {
+        alignItems: 'center',
+        gap: 12,
+    },
+    actionCardTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#000000',
+    },
+
+    // Section
+    section: {
+        marginBottom: 24,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 14,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#000000',
+    },
+    seeAllLink: {
+        color: '#007AFF',
+        fontWeight: '500',
+        fontSize: 14,
+    },
+
+    // Recent Activity
+    recentActivityContainer: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    activityItem: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 12,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 1,
+    },
+    activityIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    activityInfo: {
+        flex: 1,
+    },
+    activityTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#000000',
+    },
+    activityTime: {
+        fontSize: 11,
+        color: '#8E8E93',
+        marginTop: 2,
+    },
+
+    // Navigation Hint
+    navigationHint: {
+        flexDirection: 'row',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 12,
+        justifyContent: 'space-around',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 1,
+    },
+    navTab: {
+        alignItems: 'center',
+        gap: 4,
+    },
+    navIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    navLabel: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: '#8E8E93',
+    },
+
+    // Document Card
     docCard: {
         width: 120,
         marginRight: 4,
@@ -354,7 +578,10 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(0,0,0,0.05)',
         justifyContent: 'center',
         alignItems: 'center',
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
         elevation: 3,
     },
     docBadge: {
@@ -381,201 +608,6 @@ const styles = StyleSheet.create({
         color: '#8E8E93',
         fontSize: 11,
     },
-    content: {
-        padding: 20,
-        paddingBottom: 40,
-    },
-
-    // Header
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    headerLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    avatarGradient: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    greeting: {
-        color: '#000000',
-        fontWeight: '700',
-    },
-    email: {
-        color: '#8E8E93',
-    },
-    logoutBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255,59,48,0.1)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-
-    // Stats
-    statsContainer: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 24,
-    },
-    statCard: {
-        flex: 1,
-        padding: 16,
-        borderRadius: 20,
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.05)',
-        elevation: 2,
-    },
-    statIconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
-        // backgroundColor handled inline for opacity
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    statNumber: {
-        color: '#000000',
-        fontWeight: '700',
-    },
-    statLabel: {
-        color: '#8E8E93',
-        marginTop: 4,
-    },
-
-    // Section
-    section: {
-        marginBottom: 24,
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 14,
-    },
-    sectionTitle: {
-        color: '#000000',
-        fontWeight: '700',
-    },
-    sectionSubtitle: {
-        color: '#8E8E93',
-        fontSize: 13,
-        marginTop: -8,
-        marginBottom: 14,
-    },
-    seeAllBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 2,
-    },
-    seeAllText: {
-        color: '#007AFF',
-        fontWeight: '500',
-        fontSize: 14,
-    },
-
-    // Quick Actions
-    quickActionsScroll: {
-        gap: 10,
-    },
-    quickActionCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingVertical: 12,
-        paddingHorizontal: 14,
-        borderRadius: 14,
-        backgroundColor: '#FFFFFF',
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
-        elevation: 2,
-    },
-    quickActionIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    quickActionText: {
-        color: '#000000',
-        fontWeight: '600',
-        fontSize: 13,
-    },
-
-    // Convert Button
-    convertButtonContainer: {
-        marginBottom: 20,
-        borderRadius: 16,
-        overflow: 'hidden',
-        boxShadow: '0px 8px 16px rgba(0, 122, 255, 0.25)',
-        elevation: 8,
-    },
-    convertButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        paddingVertical: 18,
-    },
-    convertButtonText: {
-        color: '#ffffff',
-        fontWeight: '700',
-        fontSize: 17,
-    },
-    convertButtonBadge: {
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    convertButtonBadgeText: {
-        color: '#fff',
-        fontSize: 11,
-        fontWeight: '600',
-    },
-
-    // Features
-    featuresContainer: {
-        flexDirection: 'row',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 14,
-        marginBottom: 24,
-        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.05)',
-        elevation: 2,
-    },
-    featureItem: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        borderRightWidth: 1,
-        borderRightColor: '#F2F2F7',
-    },
-    featureIcon: {
-        width: 32,
-        height: 32,
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    featureText: {
-        color: '#000000',
-        fontSize: 12,
-        fontWeight: '500',
-    },
 
     // Empty State
     emptyState: {
@@ -599,7 +631,10 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         backgroundColor: '#FFFFFF',
         marginBottom: 8,
-        boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
         elevation: 1,
     },
     historyIcon: {

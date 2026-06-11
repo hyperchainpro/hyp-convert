@@ -1,9 +1,18 @@
 import { Tabs, router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, View } from 'react-native';
+import { Platform, View, Animated } from 'react-native';
+import { useRef, useState } from 'react';
 
 export default function TabsLayout() {
+    const scaleAnims = useRef([
+        new Animated.Value(1),
+        new Animated.Value(1),
+        new Animated.Value(1),
+        new Animated.Value(1),
+        new Animated.Value(1),
+    ]).current;
+
     return (
         <>
             <StatusBar style="dark" />
@@ -23,9 +32,6 @@ export default function TabsLayout() {
                     },
                     headerShadowVisible: false,
                     headerLeft: ({ canGoBack }: any) => {
-                        // Don't show back button on dashboard (index)
-                        // Actually, we can't easily filter by route name inside screenOptions function without context.
-                        // We will override this in the 'index' screen options below.
                         return (
                             <View style={{ marginLeft: 16 }}>
                                 <MaterialCommunityIcons
@@ -45,21 +51,27 @@ export default function TabsLayout() {
                     },
                     tabBarStyle: {
                         backgroundColor: Platform.OS === 'web'
-                            ? 'rgba(255,255,255,0.85)'
+                            ? 'rgba(255,255,255,0.95)'
                             : '#FFFFFF',
-                        borderTopColor: 'rgba(0,0,0,0.1)',
-                        borderTopWidth: 0.5,
-                        height: 60,
-                        paddingBottom: 8,
-                        paddingTop: 8,
+                        borderTopColor: 'rgba(0,0,0,0.08)',
+                        borderTopWidth: 1,
+                        height: 70,
+                        paddingBottom: 12,
+                        paddingTop: 10,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: -2 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 8,
+                        elevation: 8,
                         ...(Platform.OS === 'web' ? {
                         } as any : {}),
                     },
                     tabBarActiveTintColor: '#007AFF',
                     tabBarInactiveTintColor: '#8E8E93',
                     tabBarLabelStyle: {
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: '600',
+                        marginTop: 4,
                     },
                 }}
             >
@@ -68,39 +80,41 @@ export default function TabsLayout() {
                     options={{
                         title: 'Dashboard',
                         headerTitle: 'HYP Convert',
-                        headerLeft: () => null, // No back button on Dashboard
+                        headerLeft: () => null,
                         tabBarIcon: ({ color, size, focused }) => (
-                            <View style={{
-                                backgroundColor: focused ? 'rgba(0,122,255,0.15)' : 'transparent',
-                                padding: 6,
-                                borderRadius: 10,
+                            <Animated.View style={{
+                                backgroundColor: focused ? 'rgba(0,122,255,0.2)' : 'transparent',
+                                padding: 8,
+                                borderRadius: 12,
+                                transform: [{ scale: scaleAnims[0] }],
                             }}>
                                 <MaterialCommunityIcons
                                     name={focused ? "view-dashboard" : "view-dashboard-outline"}
-                                    size={22}
+                                    size={24}
                                     color={color}
                                 />
-                            </View>
+                            </Animated.View>
                         ),
                     }}
                 />
                 <Tabs.Screen
                     name="documents"
                     options={{
-                        title: 'Dokumen',
+                        title: 'Files',
                         headerTitle: '🗂️ Dokumen Saya',
                         tabBarIcon: ({ color, size, focused }) => (
-                            <View style={{
-                                backgroundColor: focused ? 'rgba(0,122,255,0.15)' : 'transparent',
-                                padding: 6,
-                                borderRadius: 10,
+                            <Animated.View style={{
+                                backgroundColor: focused ? 'rgba(0,122,255,0.2)' : 'transparent',
+                                padding: 8,
+                                borderRadius: 12,
+                                transform: [{ scale: scaleAnims[1] }],
                             }}>
                                 <MaterialCommunityIcons
                                     name={focused ? "folder-open" : "folder-outline"}
-                                    size={22}
+                                    size={24}
                                     color={color}
                                 />
-                            </View>
+                            </Animated.View>
                         ),
                     }}
                 />
@@ -110,57 +124,60 @@ export default function TabsLayout() {
                         title: 'Scanner',
                         headerTitle: '📷 Document Scanner',
                         tabBarIcon: ({ color, size, focused }) => (
-                            <View style={{
-                                backgroundColor: focused ? 'rgba(0,122,255,0.15)' : 'transparent',
-                                padding: 6,
-                                borderRadius: 10,
+                            <Animated.View style={{
+                                backgroundColor: focused ? 'rgba(0,122,255,0.2)' : 'transparent',
+                                padding: 8,
+                                borderRadius: 12,
+                                transform: [{ scale: scaleAnims[2] }],
                             }}>
                                 <MaterialCommunityIcons
                                     name={focused ? "camera-document" : "camera-document-off"}
-                                    size={22}
+                                    size={24}
                                     color={color}
                                 />
-                            </View>
+                            </Animated.View>
                         ),
                     }}
                 />
                 <Tabs.Screen
                     name="convert"
                     options={{
-                        title: 'Konversi',
+                        title: 'Convert',
                         headerTitle: '⚡ Konversi File',
                         tabBarIcon: ({ color, size, focused }) => (
-                            <View style={{
-                                backgroundColor: focused ? 'rgba(0,122,255,0.15)' : 'transparent',
-                                padding: 6,
-                                borderRadius: 10,
+                            <Animated.View style={{
+                                backgroundColor: focused ? 'rgba(0,122,255,0.2)' : 'transparent',
+                                padding: 8,
+                                borderRadius: 12,
+                                transform: [{ scale: scaleAnims[3] }],
                             }}>
                                 <MaterialCommunityIcons
                                     name={focused ? "file-swap" : "file-swap-outline"}
-                                    size={22}
+                                    size={24}
                                     color={color}
                                 />
-                            </View>
+                            </Animated.View>
                         ),
                     }}
                 />
                 <Tabs.Screen
                     name="history"
                     options={{
-                        title: 'Riwayat',
+                        title: 'History',
                         headerTitle: '📊 Riwayat Konversi',
                         tabBarIcon: ({ color, size, focused }) => (
-                            <View style={{
-                                backgroundColor: focused ? 'rgba(0,122,255,0.15)' : 'transparent',
-                                padding: 6,
-                                borderRadius: 10,
+                            <Animated.View style={{
+                                backgroundColor: focused ? 'rgba(0,122,255,0.2)' : 'transparent',
+                                padding: 8,
+                                borderRadius: 12,
+                                transform: [{ scale: scaleAnims[4] }],
                             }}>
                                 <MaterialCommunityIcons
                                     name={focused ? "history" : "clock-outline"}
-                                    size={22}
+                                    size={24}
                                     color={color}
                                 />
-                            </View>
+                            </Animated.View>
                         ),
                     }}
                 />

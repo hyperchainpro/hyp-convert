@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity, Image, Animated } from 'react-native';
 import { Text, TextInput, Button, Surface, HelperText, Snackbar } from 'react-native-paper';
 import { Link, router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -15,8 +15,23 @@ export default function LoginScreen() {
     const [formError, setFormError] = useState('');
 
     const { signIn, loading, error, clearError } = useAuth();
-    const params = useLocalSearchParams<{ registered?: string; email?: string; verified?: string }>();
+    const params = useLocalSearchParams<{ registered?: string; email?: string; verified?: string; confirmed?: string }>();
     const [showSuccessMessage, setShowSuccessMessage] = useState(!!params.registered);
+    const [showConfirmedMessage, setShowConfirmedMessage] = useState(!!params.confirmed);
+
+    // Animation refs
+    const logoAnim = useRef(new Animated.Value(0)).current;
+    const cardAnim = useRef(new Animated.Value(0)).current;
+    const inputAnimations = useRef([
+        new Animated.Value(0),
+        new Animated.Value(0),
+        new Animated.Value(0),
+    ]).current;
+    const buttonAnim = useRef(new Animated.Value(0)).current;
+    const linkAnimations = useRef([
+        new Animated.Value(0),
+        new Animated.Value(0),
+    ]).current;
 
     // Check verification status on focus
     useFocusEffect(
@@ -34,6 +49,70 @@ export default function LoginScreen() {
         }
     }, [params.email]);
 
+    // Start animations on mount
+    useEffect(() => {
+        // Logo bounce animation
+        Animated.sequence([
+            Animated.delay(100),
+            Animated.spring(logoAnim, {
+                toValue: 1,
+                tension: 50,
+                friction: 7,
+                useNativeDriver: true,
+            }),
+        ]).start();
+
+        // Card fade and slide up
+        Animated.sequence([
+            Animated.delay(200),
+            Animated.timing(cardAnim, {
+                toValue: 1,
+                duration: 500,
+                useNativeDriver: true,
+            }),
+        ]).start();
+
+        // Staggered input animations
+        const inputAnims = inputAnimations.map((anim, idx) =>
+            Animated.sequence([
+                Animated.delay(400 + idx * 100),
+                Animated.timing(anim, {
+                    toValue: 1,
+                    duration: 400,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+
+        // Button animation
+        const buttonAnim2 = Animated.sequence([
+            Animated.delay(700),
+            Animated.timing(buttonAnim, {
+                toValue: 1,
+                duration: 400,
+                useNativeDriver: true,
+            }),
+        ]);
+
+        // Links animation
+        const linksAnims = linkAnimations.map((anim, idx) =>
+            Animated.sequence([
+                Animated.delay(900 + idx * 100),
+                Animated.timing(anim, {
+                    toValue: 1,
+                    duration: 300,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+
+        Animated.parallel([
+            ...inputAnims,
+            buttonAnim2,
+            ...linksAnims,
+        ]).start();
+    }, []);
+
     const validateForm = (): boolean => {
         if (!email.trim()) {
             setFormError('Email tidak boleh kosong');
@@ -43,7 +122,6 @@ export default function LoginScreen() {
             setFormError('Password tidak boleh kosong');
             return false;
         }
-        // Check verification global state (mocked) or param
         // Check verification global state
         if (!verificationStore.getVerified()) {
             setFormError('Silakan verifikasi keamanan terlebih dahulu');
@@ -66,12 +144,6 @@ export default function LoginScreen() {
             router.replace('/(tabs)');
         } else {
             console.error('Login failed:', result.error);
-            // Error is already set in useAuth state, but we can intercept specific messages here if needed for UI
-            if (result.error?.includes('Email not confirmed')) {
-                // The useAuth hook sets the state, but we can show a specific snackbar or action later if needed
-                // For now, reliance on useAuth's error state which is displayed in HelperText is fine, 
-                // but we'll ensure the message is user-friendly in the UI rendering.
-            }
         }
     };
 
@@ -88,157 +160,297 @@ export default function LoginScreen() {
                     contentContainerStyle={styles.scrollContent}
                     keyboardShouldPersistTaps="handled"
                 >
-                    <Surface style={styles.card} elevation={3}>
-                        {/* Header */}
-                        <View style={styles.header}>
-                            <Image source={require('@/assets/images/hyp-logo-auth.png')} style={{ width: 96, height: 96, marginBottom: 12 }} resizeMode="contain" />
-                            <Text style={styles.appTitle}>HYP Convert</Text>
-                            <Text variant="bodyMedium" style={styles.subtitle}>
-                                Masuk ke akun Anda
-                            </Text>
-                        </View>
+                    {/* Logo with animation */}
+                    <Animated.View
+                        style={[
+                            styles.logoContainer,
+                            {
+                                opacity: logoAnim,
+                                transform: [
+                                    {
+                                        scale: logoAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [0.5, 1],
+                                        }),
+                                    },
+                                ],
+                            },
+                        ]}
+                    >
+                        <Image source={require('@/assets/images/hyp-logo-auth.png')} style={{ width: 80, height: 80 }} resizeMode="contain" />
+                    </Animated.View>
 
-                        {/* Form */}
-                        <View style={styles.form}>
-                            <TextInput
-                                mode="outlined"
-                                label="Email"
-                                value={email}
-                                onChangeText={(text) => {
-                                    setEmail(text);
-                                    setFormError('');
-                                    clearError();
-                                }}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                autoComplete="email"
-                                left={<TextInput.Icon icon="email" color="#8E8E93" />}
-                                outlineColor="#E5E5EA"
-                                activeOutlineColor="#007AFF"
-                                style={styles.input}
-                                textColor="#000000"
-                                theme={{ colors: { onSurfaceVariant: '#8E8E93' } }}
-                            />
-
-                            <TextInput
-                                mode="outlined"
-                                label="Password"
-                                value={password}
-                                onChangeText={(text) => {
-                                    setPassword(text);
-                                    setFormError('');
-                                    clearError();
-                                }}
-                                secureTextEntry={!showPassword}
-                                autoCapitalize="none"
-                                left={<TextInput.Icon icon="lock" color="#8E8E93" />}
-                                right={
-                                    <TextInput.Icon
-                                        icon={showPassword ? 'eye-off' : 'eye'}
-                                        onPress={() => setShowPassword(!showPassword)}
-                                        color="#8E8E93"
-                                    />
-                                }
-                                outlineColor="#E5E5EA"
-                                activeOutlineColor="#007AFF"
-                                style={styles.input}
-                                textColor="#000000"
-                                theme={{ colors: { onSurfaceVariant: '#8E8E93' } }}
-                            />
-
-                            {/* Captcha Replacement */}
-                            <TouchableOpacity
-                                onPress={() => {
-                                    if (captchaVerified) return;
-                                    // Pass current email to preserve it? No, just nav.
-                                    // We need to return to THIS screen with verified=true
-                                    router.push({
-                                        pathname: '/(auth)/verify' as any,
-                                        params: { returnTo: '/(auth)/login', email }
-                                    });
-                                }}
-                                style={[
-                                    styles.captchaBtn,
-                                    captchaVerified && styles.captchaBtnVerified
-                                ]}
-                                disabled={captchaVerified}
-                            >
-                                <MaterialCommunityIcons
-                                    name={captchaVerified ? "shield-check" : "shield-alert"}
-                                    size={24}
-                                    color={captchaVerified ? "#30D158" : "#8E8E93"}
-                                />
-                                <Text style={[
-                                    styles.captchaText,
-                                    captchaVerified && styles.captchaTextVerified
-                                ]}>
-                                    {captchaVerified ? "Keamanan Terverifikasi" : "Klik untuk Verifikasi Keamanan"}
+                    {/* Card with fade and slide animation */}
+                    <Animated.View
+                        style={[
+                            {
+                                opacity: cardAnim,
+                                transform: [
+                                    {
+                                        translateY: cardAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [30, 0],
+                                        }),
+                                    },
+                                ],
+                            },
+                        ]}
+                    >
+                        <Surface style={styles.card} elevation={3}>
+                            {/* Header */}
+                            <View style={styles.header}>
+                                <Text style={styles.appTitle}>HYP Convert</Text>
+                                <Text variant="bodyMedium" style={styles.subtitle}>
+                                    Masuk ke akun Anda
                                 </Text>
-                                {captchaVerified && (
-                                    <MaterialCommunityIcons name="check" size={20} color="#30D158" />
-                                )}
-                            </TouchableOpacity>
+                            </View>
 
-                            {/* Error Messages */}
-                            {(formError || error || captchaError) ? (
-                                <HelperText type="error" visible={true} style={styles.errorText}>
-                                    <Text style={{ color: '#FF3B30', fontWeight: '600' }}>
-                                        {formError || captchaError || (
-                                            error?.includes('Invalid login credentials')
-                                                ? 'Email atau password salah. Jika belum punya akun, silakan daftar.'
-                                                : error
+                            {/* Form */}
+                            <View style={styles.form}>
+                                {/* Email Input with animation */}
+                                <Animated.View
+                                    style={[
+                                        {
+                                            opacity: inputAnimations[0],
+                                            transform: [
+                                                {
+                                                    translateX: inputAnimations[0].interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [-20, 0],
+                                                    }),
+                                                },
+                                            ],
+                                        },
+                                    ]}
+                                >
+                                    <TextInput
+                                        mode="outlined"
+                                        label="Email"
+                                        value={email}
+                                        onChangeText={(text) => {
+                                            setEmail(text);
+                                            setFormError('');
+                                            clearError();
+                                        }}
+                                        keyboardType="email-address"
+                                        autoCapitalize="none"
+                                        autoComplete="email"
+                                        left={<TextInput.Icon icon="email" color="#8E8E93" />}
+                                        outlineColor="#E5E5EA"
+                                        activeOutlineColor="#007AFF"
+                                        style={styles.input}
+                                        textColor="#000000"
+                                        theme={{ colors: { onSurfaceVariant: '#8E8E93' } }}
+                                    />
+                                </Animated.View>
+
+                                {/* Password Input with animation */}
+                                <Animated.View
+                                    style={[
+                                        {
+                                            opacity: inputAnimations[1],
+                                            transform: [
+                                                {
+                                                    translateX: inputAnimations[1].interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [-20, 0],
+                                                    }),
+                                                },
+                                            ],
+                                        },
+                                    ]}
+                                >
+                                    <TextInput
+                                        mode="outlined"
+                                        label="Password"
+                                        value={password}
+                                        onChangeText={(text) => {
+                                            setPassword(text);
+                                            setFormError('');
+                                            clearError();
+                                        }}
+                                        secureTextEntry={!showPassword}
+                                        autoCapitalize="none"
+                                        left={<TextInput.Icon icon="lock" color="#8E8E93" />}
+                                        right={
+                                            <TextInput.Icon
+                                                icon={showPassword ? 'eye-off' : 'eye'}
+                                                onPress={() => setShowPassword(!showPassword)}
+                                                color="#8E8E93"
+                                            />
+                                        }
+                                        outlineColor="#E5E5EA"
+                                        activeOutlineColor="#007AFF"
+                                        style={styles.input}
+                                        textColor="#000000"
+                                        theme={{ colors: { onSurfaceVariant: '#8E8E93' } }}
+                                    />
+                                </Animated.View>
+
+                                {/* Captcha with animation */}
+                                <Animated.View
+                                    style={[
+                                        {
+                                            opacity: inputAnimations[2],
+                                            transform: [
+                                                {
+                                                    translateX: inputAnimations[2].interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [-20, 0],
+                                                    }),
+                                                },
+                                            ],
+                                        },
+                                    ]}
+                                >
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            if (captchaVerified) return;
+                                            router.push({
+                                                pathname: '/(auth)/verify' as any,
+                                                params: { returnTo: '/(auth)/login', email }
+                                            });
+                                        }}
+                                        style={[
+                                            styles.captchaBtn,
+                                            captchaVerified && styles.captchaBtnVerified
+                                        ]}
+                                        disabled={captchaVerified}
+                                    >
+                                        <MaterialCommunityIcons
+                                            name={captchaVerified ? "shield-check" : "shield-alert"}
+                                            size={24}
+                                            color={captchaVerified ? "#30D158" : "#8E8E93"}
+                                        />
+                                        <Text style={[
+                                            styles.captchaText,
+                                            captchaVerified && styles.captchaTextVerified
+                                        ]}>
+                                            {captchaVerified ? "Keamanan Terverifikasi" : "Klik untuk Verifikasi Keamanan"}
+                                        </Text>
+                                        {captchaVerified && (
+                                            <MaterialCommunityIcons name="check" size={20} color="#30D158" />
                                         )}
-                                    </Text>
-                                </HelperText>
-                            ) : null}
+                                    </TouchableOpacity>
+                                </Animated.View>
 
-                            {/* Login Button */}
-                            <Button
-                                mode="contained"
-                                onPress={handleLogin}
-                                loading={loading}
-                                disabled={loading}
-                                style={styles.button}
-                                buttonColor="#007AFF"
-                                contentStyle={styles.buttonContent}
-                            >
-                                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>{loading ? 'Memuat...' : 'Masuk'}</Text>
-                            </Button>
+                                {/* Error Messages */}
+                                {(formError || error || captchaError) ? (
+                                    <>
+                                        <HelperText type="error" visible={true} style={styles.errorText}>
+                                            <Text style={{ color: '#FF3B30', fontWeight: '600' }}>
+                                                {formError || captchaError || (
+                                                    error === 'EMAIL_NOT_CONFIRMED'
+                                                        ? 'Email belum dikonfirmasi. Silakan cek inbox email Anda dan klik link konfirmasi.'
+                                                        : error === 'INVALID_CREDENTIALS'
+                                                            ? 'Email atau password salah. Jika belum punya akun, silakan daftar.'
+                                                            : error
+                                                )}
+                                            </Text>
+                                        </HelperText>
+                                        {error === 'EMAIL_NOT_CONFIRMED' && (
+                                            <View style={styles.confirmHint}>
+                                                <MaterialCommunityIcons name="email-outline" size={16} color="#FF9500" />
+                                                <Text style={styles.confirmHintText}>
+                                                    Tidak menemukan email? Cek folder Spam/Junk.
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </>
+                                ) : null}
 
-                            {/* Links */}
-                            <View style={styles.links}>
-                                <Link href="/(auth)/forgot-password" asChild>
-                                    <Button mode="text" textColor="#007AFF">
-                                        Lupa Password?
+                                {/* Login Button with animation */}
+                                <Animated.View
+                                    style={[
+                                        {
+                                            opacity: buttonAnim,
+                                            transform: [
+                                                {
+                                                    scale: buttonAnim.interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [0.9, 1],
+                                                    }),
+                                                },
+                                            ],
+                                        },
+                                    ]}
+                                >
+                                    <Button
+                                        mode="contained"
+                                        onPress={handleLogin}
+                                        loading={loading}
+                                        disabled={loading}
+                                        style={styles.button}
+                                        buttonColor="#007AFF"
+                                        contentStyle={styles.buttonContent}
+                                    >
+                                        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>{loading ? 'Memuat...' : 'Masuk'}</Text>
                                     </Button>
-                                </Link>
-                            </View>
+                                </Animated.View>
 
-                            <View style={styles.registerLink}>
-                                <Text style={styles.registerText}>Belum punya akun?</Text>
-                                <Link href="/(auth)/register" asChild>
-                                    <Button mode="text" textColor="#007AFF">
-                                        Daftar Sekarang
-                                    </Button>
-                                </Link>
+                                {/* Links with fade in animation */}
+                                <Animated.View
+                                    style={[
+                                        styles.links,
+                                        {
+                                            opacity: linkAnimations[0],
+                                        },
+                                    ]}
+                                >
+                                    <Link href="/(auth)/forgot-password" asChild>
+                                        <Button mode="text" textColor="#007AFF">
+                                            Lupa Password?
+                                        </Button>
+                                    </Link>
+                                </Animated.View>
+
+                                <Animated.View
+                                    style={[
+                                        styles.registerLink,
+                                        {
+                                            opacity: linkAnimations[1],
+                                        },
+                                    ]}
+                                >
+                                    <Text style={styles.registerText}>Belum punya akun?</Text>
+                                    <Link href="/(auth)/register" asChild>
+                                        <Button mode="text" textColor="#007AFF">
+                                            Daftar Sekarang
+                                        </Button>
+                                    </Link>
+                                </Animated.View>
                             </View>
-                        </View>
-                    </Surface>
+                        </Surface>
+                    </Animated.View>
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            {/* Success Message Snackbar */}
+            {/* Registration Success Snackbar */}
             <Snackbar
                 visible={showSuccessMessage}
                 onDismiss={() => setShowSuccessMessage(false)}
-                duration={5000}
+                duration={6000}
                 style={styles.snackbar}
                 action={{
                     label: 'OK',
                     onPress: () => setShowSuccessMessage(false),
                 }}
             >
-                <Text style={{ color: '#fff' }}>Pendaftaran berhasil! Silakan login dengan akun Anda.</Text>
+                <Text style={{ color: '#fff' }}>✅ Pendaftaran berhasil! Silakan login dengan akun Anda.</Text>
+            </Snackbar>
+
+            {/* Email Confirmed Snackbar */}
+            <Snackbar
+                visible={showConfirmedMessage}
+                onDismiss={() => setShowConfirmedMessage(false)}
+                duration={5000}
+                style={[styles.snackbar, { backgroundColor: '#007AFF' }]}
+                action={{
+                    label: 'OK',
+                    onPress: () => setShowConfirmedMessage(false),
+                }}
+            >
+                <Text style={{ color: '#fff' }}>✅ Email berhasil dikonfirmasi! Silakan login.</Text>
             </Snackbar>
         </>
     );
@@ -247,16 +459,20 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F2F2F7', // iOS System Gray 6
+        backgroundColor: '#F2F2F7',
     },
     scrollContent: {
         flexGrow: 1,
         justifyContent: 'center',
         padding: 20,
     },
+    logoContainer: {
+        alignItems: 'center',
+        marginBottom: 20,
+    },
     card: {
         padding: 24,
-        borderRadius: 20, // More rounded for iOS
+        borderRadius: 20,
         backgroundColor: '#FFFFFF',
         maxWidth: 400,
         width: '100%',
@@ -275,13 +491,8 @@ const styles = StyleSheet.create({
         letterSpacing: 0.4,
         marginBottom: 8,
     },
-    title: {
-        color: '#000000',
-        fontWeight: '700',
-        marginTop: 16,
-    },
     subtitle: {
-        color: '#8E8E93', // iOS System Gray
+        color: '#8E8E93',
         marginTop: 8,
     },
     form: {
@@ -316,7 +527,7 @@ const styles = StyleSheet.create({
         color: '#8E8E93',
     },
     snackbar: {
-        backgroundColor: '#34C759', // iOS Success Green
+        backgroundColor: '#34C759',
         borderRadius: 12,
         marginBottom: 20,
     },
@@ -342,5 +553,19 @@ const styles = StyleSheet.create({
     },
     captchaTextVerified: {
         color: '#30D158',
+    },
+    confirmHint: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: 'rgba(255,149,0,0.1)',
+        borderRadius: 8,
+        padding: 10,
+        marginTop: -8,
+    },
+    confirmHintText: {
+        color: '#FF9500',
+        fontSize: 13,
+        flex: 1,
     },
 });
